@@ -1,10 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"path/filepath"
-	"sync"
 
 	"errors"
 	"image"
@@ -14,15 +12,9 @@ import (
 	"github.com/disintegration/imaging"
 
 	"github.com/mgperkowski/goasyncawait/async"
-)
 
-type Image struct {
-	path      string
-	name      string
-	img       image.Image
-	value     int
-	dimension string
-}
+	"time"
+)
 
 func processArgs(args []string) (string, string, int, error) {
 	if len(args) != 4 {
@@ -49,18 +41,25 @@ func processArgs(args []string) (string, string, int, error) {
 	return path, flag, valueInt, nil
 }
 
-func resizeImages(path string, flag string, value int) ([]*Image, error) {
+func resizeImages(path string, flag string, value int) error {
+
+	startTime := time.Now()
+	resizedCount := 0
+
 	var promises []*async.Promise
-	var resizedImages []*Image
-	var mutex sync.Mutex
 
 	isDir, _ := isDirectory(path)
 
 	if isDir {
+
+		resizedDir := filepath.Join(path, "Resized_Images")
+
+		saveDirExists, _ := directoryExists(resizedDir)
+
 		files, err := os.ReadDir(path)
 
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		for _, file := range files {
@@ -68,6 +67,19 @@ func resizeImages(path string, flag string, value int) ([]*Image, error) {
 			isImg, _ := isImage(filepath.Join(path, file.Name()))
 
 			if isImg {
+
+				if !saveDirExists {
+
+					err := os.Mkdir(resizedDir, 0755)
+
+					if err != nil {
+						log.Fatal(err)
+					}
+
+					saveDirExists = true
+
+				}
+
 				p := async.NewPromise(func(resolve func(interface{}), reject func(error)) {
 					image, err := imaging.Open(filepath.Join(path, file.Name()))
 
@@ -75,20 +87,26 @@ func resizeImages(path string, flag string, value int) ([]*Image, error) {
 						reject(err)
 					}
 
-					fmt.Println("Resizing: ", file.Name())
-
 					if flag == "-h" {
 						resized := imaging.Resize(image, 0, value, imaging.Lanczos)
-						imageStruct := Image{path: path, name: file.Name(), img: resized, value: value, dimension: "h"}
-						mutex.Lock()
-						resizedImages = append(resizedImages, &imageStruct)
-						mutex.Unlock()
+						err := imaging.Save(resized, filepath.Join(resizedDir, "h"+strconv.Itoa(value)+"-"+file.Name()))
+
+						if err != nil {
+							reject(err)
+						} else {
+							resizedCount++
+							log.Println("Image resized and saved to: ", filepath.Join(resizedDir, "h"+strconv.Itoa(value)+"-"+file.Name()))
+						}
 					} else {
 						resized := imaging.Resize(image, value, 0, imaging.Lanczos)
-						imageStruct := Image{path: path, name: file.Name(), img: resized, value: value, dimension: "w"}
-						mutex.Lock()
-						resizedImages = append(resizedImages, &imageStruct)
-						mutex.Unlock()
+						err := imaging.Save(resized, filepath.Join(resizedDir, "w"+strconv.Itoa(value)+"-"+file.Name()))
+
+						if err != nil {
+							reject(err)
+						} else {
+							resizedCount++
+							log.Println("Image resized and saved to: ", filepath.Join(resizedDir, "w"+strconv.Itoa(value)+"-"+file.Name()))
+						}
 					}
 
 					resolve(nil)
@@ -99,10 +117,14 @@ func resizeImages(path string, flag string, value int) ([]*Image, error) {
 
 		_, err = async.AwaitAll(promises)
 
+		elapsedTime := time.Since(startTime)
+
+		log.Println("Resized ", resizedCount, " image(s) in ", elapsedTime)
+
 		if err != nil {
-			return nil, err
+			return err
 		} else {
-			return resizedImages, nil
+			return nil
 		}
 	} else {
 
@@ -117,24 +139,53 @@ func resizeImages(path string, flag string, value int) ([]*Image, error) {
 			image, err := imaging.Open(path)
 
 			if err != nil {
-				return nil, err
+				return err
 			}
 
-			fmt.Println("Resizing: ", fileName)
+			resizedDir := filepath.Join(directoryPath, "Resized_Images")
+
+			saveDirExists, _ := directoryExists(resizedDir)
+
+			if !saveDirExists {
+
+				err := os.Mkdir(resizedDir, 0755)
+
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				saveDirExists = true
+			}
 
 			if flag == "-h" {
 				resized := imaging.Resize(image, 0, value, imaging.Lanczos)
-				imageStruct := Image{path: directoryPath, name: fileName, img: resized, value: value, dimension: "h"}
-				resizedImages = append(resizedImages, &imageStruct)
+				err := imaging.Save(resized, filepath.Join(resizedDir, "h"+strconv.Itoa(value)+"-"+fileName))
+
+				if err != nil {
+					return err
+				} else {
+					resizedCount++
+					log.Println("Image resized and saved to: ", filepath.Join(resizedDir, "h"+strconv.Itoa(value)+"-"+fileName))
+				}
 			} else {
 				resized := imaging.Resize(image, value, 0, imaging.Lanczos)
-				imageStruct := Image{path: directoryPath, name: fileName, img: resized, value: value, dimension: "w"}
-				resizedImages = append(resizedImages, &imageStruct)
+				err := imaging.Save(resized, filepath.Join(resizedDir, "h"+strconv.Itoa(value)+"-"+fileName))
+
+				if err != nil {
+					return err
+				} else {
+					resizedCount++
+					log.Println("Image resized and saved to: ", filepath.Join(resizedDir, "h"+strconv.Itoa(value)+"-"+fileName))
+				}
 			}
 
-			return resizedImages, nil
+			elapsedTime := time.Since(startTime)
+
+			log.Println("Resized 1 image in ", elapsedTime)
+
+			return nil
 		} else {
-			return nil, errors.New("invalid image file")
+			return errors.New("invalid image file")
 		}
 	}
 }
@@ -195,36 +246,6 @@ func directoryExists(path string) (bool, error) {
 	return true, nil
 }
 
-func saveImages(images []*Image) {
-
-	resizedDir := filepath.Join(images[0].path, "Resized_Images")
-
-	dirExists, _ := directoryExists(resizedDir)
-
-	if !dirExists {
-
-		err := os.Mkdir(resizedDir, 0755)
-
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-
-	for _, img := range images {
-
-		valueAsString := strconv.Itoa(img.value)
-
-		path := filepath.Join(resizedDir, img.dimension+valueAsString+"-"+img.name)
-		err := imaging.Save(img.img, path)
-
-		if err != nil {
-			log.Fatal(err)
-		} else {
-			fmt.Println("Image saved to: ", path)
-		}
-	}
-}
-
 func main() {
 
 	path, flag, value, err := processArgs(os.Args)
@@ -234,13 +255,11 @@ func main() {
 		return
 	}
 
-	resizedImages, err := resizeImages(path, flag, value)
+	err = resizeImages(path, flag, value)
 
 	if err != nil {
 		log.Fatal(err)
 		return
 	}
-
-	saveImages(resizedImages)
 
 }
