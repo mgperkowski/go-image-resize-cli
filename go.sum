@@ -1,0 +1,7 @@
+github.com/disintegration/imaging v1.6.2 h1:w1LecBlG2Lnp8B3jk5zSuNqd7b4DXhcjwek1ei82L+c=
+github.com/disintegration/imaging v1.6.2/go.mod h1:44/5580QXChDfwIclfc/PCwrr44amcmDAg8hxG0Ewe4=
+github.com/mgperkowski/goasyncawait v0.0.0-20240820040330-0ef03530dd4f h1:dST/qJKKnUIJR9oqahpEI3B2o4PUstdZCdTOxQY7zUE=
+github.com/mgperkowski/goasyncawait v0.0.0-20240820040330-0ef03530dd4f/go.mod h1:i3bIKG2zvC0yrbLnuKYu+ghjmUSAm1R3Y6Z+2YO3htY=
+golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8 h1:hVwzHzIUGRjiF7EcUjqNxk3NCfkPxbDKRdnNE1Rpg0U=
+golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8/go.mod h1:FeLwcggjj3mMvU+oOTbSwawSJRM1uh48EjtB4UJZlP0=
+golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
