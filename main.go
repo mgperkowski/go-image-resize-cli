@@ -17,9 +17,11 @@ import (
 )
 
 type Image struct {
-	path string
-	name string
-	img  image.Image
+	path      string
+	name      string
+	img       image.Image
+	value     int
+	dimension string
 }
 
 func processArgs(args []string) (string, string, int, error) {
@@ -77,13 +79,13 @@ func resizeImages(path string, flag string, value int) ([]*Image, error) {
 
 					if flag == "-h" {
 						resized := imaging.Resize(image, 0, value, imaging.Lanczos)
-						imageStruct := Image{path: path, name: file.Name(), img: resized}
+						imageStruct := Image{path: path, name: file.Name(), img: resized, value: value, dimension: "h"}
 						mutex.Lock()
 						resizedImages = append(resizedImages, &imageStruct)
 						mutex.Unlock()
 					} else {
 						resized := imaging.Resize(image, value, 0, imaging.Lanczos)
-						imageStruct := Image{path: path, name: file.Name(), img: resized}
+						imageStruct := Image{path: path, name: file.Name(), img: resized, value: value, dimension: "w"}
 						mutex.Lock()
 						resizedImages = append(resizedImages, &imageStruct)
 						mutex.Unlock()
@@ -122,11 +124,11 @@ func resizeImages(path string, flag string, value int) ([]*Image, error) {
 
 			if flag == "-h" {
 				resized := imaging.Resize(image, 0, value, imaging.Lanczos)
-				imageStruct := Image{path: directoryPath, name: fileName, img: resized}
+				imageStruct := Image{path: directoryPath, name: fileName, img: resized, value: value, dimension: "h"}
 				resizedImages = append(resizedImages, &imageStruct)
 			} else {
 				resized := imaging.Resize(image, value, 0, imaging.Lanczos)
-				imageStruct := Image{path: directoryPath, name: fileName, img: resized}
+				imageStruct := Image{path: directoryPath, name: fileName, img: resized, value: value, dimension: "w"}
 				resizedImages = append(resizedImages, &imageStruct)
 			}
 
@@ -210,7 +212,9 @@ func saveImages(images []*Image) {
 
 	for _, img := range images {
 
-		path := filepath.Join(resizedDir, "resized_"+img.name)
+		valueAsString := strconv.Itoa(img.value)
+
+		path := filepath.Join(resizedDir, img.dimension+valueAsString+"-"+img.name)
 		err := imaging.Save(img.img, path)
 
 		if err != nil {
