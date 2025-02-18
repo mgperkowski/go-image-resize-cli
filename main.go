@@ -242,16 +242,17 @@ func ApplyOrientation(img image.Image, orientation int) image.Image {
 	case 4:
 		return imaging.FlipV(img)
 	case 5:
-		return imaging.Transpose(img)
+		img = imaging.Transpose(img)
 	case 6:
-		return imaging.Rotate90(img)
+		img = imaging.Rotate270(img)
 	case 7:
-		return imaging.Transverse(img)
+		img = imaging.Transverse(img)
 	case 8:
-		return imaging.Rotate270(img)
+		img = imaging.Rotate90(img)
 	default:
 		return img
 	}
+	return img
 }
 
 func getFileName(path string) string {
