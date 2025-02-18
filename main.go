@@ -89,11 +89,7 @@ func resizeImages(path string, flag string, value int) error {
 						reject(err)
 					}
 
-					orientation, err := GetExifOrientation(filepath.Join(path, file.Name()))
-
-					if err != nil {
-						reject(err)
-					}
+					orientation, _ := GetExifOrientation(filepath.Join(path, file.Name()))
 
 					image = ApplyOrientation(image, orientation)
 
@@ -167,11 +163,7 @@ func resizeImages(path string, flag string, value int) error {
 				saveDirExists = true
 			}
 
-			orientation, err := GetExifOrientation(path)
-
-			if err != nil {
-				return err
-			}
+			orientation, _ := GetExifOrientation(path)
 
 			image = ApplyOrientation(image, orientation)
 
