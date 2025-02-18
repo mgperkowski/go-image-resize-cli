@@ -11,6 +11,8 @@ import (
 
 	"github.com/disintegration/imaging"
 
+	"github.com/rwcarlsen/goexif/exif"
+
 	"github.com/mgperkowski/goasyncawait/async"
 
 	"time"
@@ -87,6 +89,14 @@ func resizeImages(path string, flag string, value int) error {
 						reject(err)
 					}
 
+					orientation, err := GetExifOrientation(filepath.Join(path, file.Name()))
+
+					if err != nil {
+						reject(err)
+					}
+
+					image = ApplyOrientation(image, orientation)
+
 					if flag == "-h" {
 						resized := imaging.Resize(image, 0, value, imaging.Lanczos)
 						err := imaging.Save(resized, filepath.Join(resizedDir, "h"+strconv.Itoa(value)+"-"+file.Name()))
@@ -157,6 +167,14 @@ func resizeImages(path string, flag string, value int) error {
 				saveDirExists = true
 			}
 
+			orientation, err := GetExifOrientation(path)
+
+			if err != nil {
+				return err
+			}
+
+			image = ApplyOrientation(image, orientation)
+
 			if flag == "-h" {
 				resized := imaging.Resize(image, 0, value, imaging.Lanczos)
 				err := imaging.Save(resized, filepath.Join(resizedDir, "h"+strconv.Itoa(value)+"-"+fileName))
@@ -187,6 +205,52 @@ func resizeImages(path string, flag string, value int) error {
 		} else {
 			return errors.New("invalid image file")
 		}
+	}
+}
+
+func GetExifOrientation(filename string) (int, error) {
+	f, err := os.Open(filename)
+	if err != nil {
+		return 1, err
+	}
+	defer f.Close()
+
+	x, err := exif.Decode(f)
+	if err != nil {
+		return 1, err
+	}
+
+	tag, err := x.Get(exif.Orientation)
+	if err != nil {
+		return 1, nil
+	}
+
+	orientation, err := tag.Int(0)
+	if err != nil {
+		return 1, err
+	}
+
+	return orientation, nil
+}
+
+func ApplyOrientation(img image.Image, orientation int) image.Image {
+	switch orientation {
+	case 2:
+		return imaging.FlipH(img)
+	case 3:
+		return imaging.Rotate180(img)
+	case 4:
+		return imaging.FlipV(img)
+	case 5:
+		return imaging.Transpose(img)
+	case 6:
+		return imaging.Rotate90(img)
+	case 7:
+		return imaging.Transverse(img)
+	case 8:
+		return imaging.Rotate270(img)
+	default:
+		return img
 	}
 }
 
