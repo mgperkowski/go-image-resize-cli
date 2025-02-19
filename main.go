@@ -179,7 +179,7 @@ func resizeImages(path string, flag string, value int) error {
 				}
 			} else {
 				resized := imaging.Resize(image, value, 0, imaging.Lanczos)
-				err := imaging.Save(resized, filepath.Join(resizedDir, "h"+strconv.Itoa(value)+"-"+fileName))
+				err := imaging.Save(resized, filepath.Join(resizedDir, "w"+strconv.Itoa(value)+"-"+fileName))
 
 				if err != nil {
 					return err
