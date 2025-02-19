@@ -185,7 +185,7 @@ func resizeImages(path string, flag string, value int) error {
 					return err
 				} else {
 					resizedCount++
-					log.Println("Image resized and saved to: ", filepath.Join(resizedDir, "h"+strconv.Itoa(value)+"-"+fileName))
+					log.Println("Image resized and saved to: ", filepath.Join(resizedDir, "w"+strconv.Itoa(value)+"-"+fileName))
 				}
 			}
 
