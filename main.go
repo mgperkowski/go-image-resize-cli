@@ -11,6 +11,9 @@ import (
 
 	"github.com/disintegration/imaging"
 
+	"github.com/kolesa-team/go-webp/encoder"
+	"github.com/kolesa-team/go-webp/webp"
+
 	"github.com/rwcarlsen/goexif/exif"
 
 	"github.com/mgperkowski/goasyncawait/async"
@@ -19,14 +22,23 @@ import (
 )
 
 func processArgs(args []string) (string, string, int, error) {
-	if len(args) != 4 {
-		log.Fatal("Usage: go-resize ./path/to/image.jpg -h 300 or go-resize ./path/to/dir -w 500")
+	if len(args) != 4 && len(args) != 3 {
+		log.Fatal("Usage: go-resize ./path/to/image.jpg -w 300 or go-resize ./path/to/dir -web")
 		return "", "", 0, errors.New("Invalid number of arguments")
 	}
 
 	path := args[1]
 	flag := args[2]
-	value := args[3]
+
+	if len(args) == 3 && flag == "-web" {
+		return path, "-web", 0, nil
+	}
+
+	value := "0"
+
+	if len(args) == 4 {
+		value = args[3]
+	}
 
 	valueInt, err := strconv.Atoi(value)
 
@@ -35,9 +47,9 @@ func processArgs(args []string) (string, string, int, error) {
 		return "", "", 0, errors.New("Invalid value -- must be an integer")
 	}
 
-	if flag != "-h" && flag != "-w" {
-		log.Fatal("Usage: go-resize ./path/to/image.jpg -h 300 or go-resize ./path/to/dir -w 500")
-		return "", "", 0, errors.New("Invalid flag -- must be -h or -w")
+	if flag != "-h" && flag != "-w" && flag != "-web" {
+		log.Fatal("Usage: go-resize ./path/to/image.jpg -w 300 or go-resize ./path/to/dir -web")
+		return "", "", 0, errors.New("Invalid flag -- must be -h, -w or -web")
 	}
 
 	return path, flag, valueInt, nil
@@ -103,7 +115,7 @@ func resizeImages(path string, flag string, value int) error {
 							resizedCount++
 							log.Println("Image resized and saved to: ", filepath.Join(resizedDir, "h"+strconv.Itoa(value)+"-"+file.Name()))
 						}
-					} else {
+					} else if flag == "-w" {
 						resized := imaging.Resize(image, value, 0, imaging.Lanczos)
 						err := imaging.Save(resized, filepath.Join(resizedDir, "w"+strconv.Itoa(value)+"-"+file.Name()))
 
@@ -113,6 +125,52 @@ func resizeImages(path string, flag string, value int) error {
 							resizedCount++
 							log.Println("Image resized and saved to: ", filepath.Join(resizedDir, "w"+strconv.Itoa(value)+"-"+file.Name()))
 						}
+					} else if flag == "-web" {
+
+						sizes := []int{500, 1000}
+
+						for _, size := range sizes {
+							resized := imaging.Resize(image, size, 0, imaging.Lanczos)
+
+							name := strconv.Itoa(size) + "-" + file.Name()
+
+							err := imaging.Save(resized, filepath.Join(resizedDir, name))
+
+							if err != nil {
+								log.Println("Error saving resized image: ", err)
+							} else {
+								resizedCount++
+								log.Println("Image resized and saved to: ", filepath.Join(resizedDir, name))
+							}
+
+							nameNoExt := name[:len(name)-len(filepath.Ext(name))]
+
+							output, err := os.Create(filepath.Join(resizedDir, nameNoExt+".webp"))
+
+							if err != nil {
+								log.Fatalf("Failed to create output file: %v", err)
+								continue
+							}
+
+							defer output.Close()
+
+							options, err := encoder.NewLossyEncoderOptions(encoder.PresetDefault, 75)
+
+							if err != nil {
+								log.Fatalf("Failed to create WebP encoder options: %v", err)
+								continue
+							}
+
+							if err := webp.Encode(output, resized, options); err != nil {
+								log.Fatalf("Failed to encode WebP: %v", err)
+								continue
+							}
+
+							log.Println("WebP image saved to: ", filepath.Join(resizedDir, nameNoExt+".webp"))
+						}
+
+					} else {
+						reject(errors.New("Invalid flag"))
 					}
 
 					resolve(nil)
@@ -177,7 +235,7 @@ func resizeImages(path string, flag string, value int) error {
 					resizedCount++
 					log.Println("Image resized and saved to: ", filepath.Join(resizedDir, "h"+strconv.Itoa(value)+"-"+fileName))
 				}
-			} else {
+			} else if flag == "-w" {
 				resized := imaging.Resize(image, value, 0, imaging.Lanczos)
 				err := imaging.Save(resized, filepath.Join(resizedDir, "w"+strconv.Itoa(value)+"-"+fileName))
 
@@ -187,6 +245,50 @@ func resizeImages(path string, flag string, value int) error {
 					resizedCount++
 					log.Println("Image resized and saved to: ", filepath.Join(resizedDir, "w"+strconv.Itoa(value)+"-"+fileName))
 				}
+			} else if flag == "-web" {
+				sizes := []int{500, 1000}
+
+				for _, size := range sizes {
+					resized := imaging.Resize(image, size, 0, imaging.Lanczos)
+
+					name := strconv.Itoa(size) + "-" + fileName
+
+					err := imaging.Save(resized, filepath.Join(resizedDir, name))
+
+					if err != nil {
+						log.Println("Error saving resized image: ", err)
+					} else {
+						resizedCount++
+						log.Println("Image resized and saved to: ", filepath.Join(resizedDir, name))
+					}
+
+					nameNoExt := name[:len(name)-len(filepath.Ext(name))]
+
+					output, err := os.Create(filepath.Join(resizedDir, nameNoExt+".webp"))
+
+					if err != nil {
+						log.Fatalf("Failed to create output file: %v", err)
+						continue
+					}
+
+					defer output.Close()
+
+					options, err := encoder.NewLossyEncoderOptions(encoder.PresetDefault, 75)
+
+					if err != nil {
+						log.Fatalf("Failed to create WebP encoder options: %v", err)
+						continue
+					}
+
+					if err := webp.Encode(output, resized, options); err != nil {
+						log.Fatalf("Failed to encode WebP: %v", err)
+						continue
+					}
+
+					log.Println("WebP image saved to: ", filepath.Join(resizedDir, nameNoExt+".webp"))
+				}
+			} else {
+				return errors.New("Invalid flag")
 			}
 
 			elapsedTime := time.Since(startTime)
